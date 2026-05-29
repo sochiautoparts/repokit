@@ -298,7 +298,8 @@ function generateDockerCompose(projectName, database) {
   if (database === 'postgresql') {
     services.db = {
       image: 'postgres:16-alpine',
-      environment: ['POSTGRES_USER=postgres', 'POSTGRES_PASSWORD=postgres', 'POSTGRES_DB=' + projectName],
+      // FIX: Use env vars with secure defaults instead of hardcoded passwords
+      environment: ['POSTGRES_USER=postgres', 'POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}', 'POSTGRES_DB=' + projectName],
       ports: ['5432:5432'],
       volumes: ['pgdata:/var/lib/postgresql/data']
     };
@@ -313,7 +314,8 @@ function generateDockerCompose(projectName, database) {
   } else if (database === 'mysql') {
     services.db = {
       image: 'mysql:8',
-      environment: ['MYSQL_ROOT_PASSWORD=root', `MYSQL_DATABASE=${projectName}`],
+      // FIX: Use env vars instead of hardcoded root/root
+      environment: ['MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-changeme}', `MYSQL_DATABASE=${projectName}`],
       ports: ['3306:3306'],
       volumes: ['mysqldata:/var/lib/mysql']
     };
@@ -370,9 +372,10 @@ function generateDockerCompose(projectName, database) {
 function getDatabaseUrl(database) {
   const urls = {
     none: '',
-    postgresql: 'postgresql://postgres:postgres@localhost:5432/mydb',
+    // FIX: Use changeme placeholder instead of hardcoded passwords
+    postgresql: 'postgresql://postgres:changeme@localhost:5432/mydb',
     mongodb: 'mongodb://localhost:27017/mydb',
-    mysql: 'mysql://root:root@localhost:3306/mydb',
+    mysql: 'mysql://root:changeme@localhost:3306/mydb',
     sqlite: 'file:./dev.db',
     redis: 'redis://localhost:6379'
   };

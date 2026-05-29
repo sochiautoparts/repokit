@@ -21,9 +21,35 @@ inputs:
     description: 'Include CI/CD configuration'
     required: false
     default: 'true'
+  license-key:
+    description: 'StarsPay Pro license key (for Pro templates)'
+    required: false
+    default: ''
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: 'composite'
+  steps:
+    - name: Install RepoKit
+      shell: bash
+      run: npm install -g repokit
+    - name: Generate Project
+      shell: bash
+      env:
+        STARSPAY_LICENSE_KEY: ${{ inputs.license-key }}
+      run: |
+        ARGS=""
+        if [ -n "${{ inputs.template }}" ]; then
+          ARGS="$ARGS --template ${{ inputs.template }}"
+        fi
+        ARGS="$ARGS --name ${{ inputs.project-name }}"
+        ARGS="$ARGS --database ${{ inputs.database }}"
+        if [ "${{ inputs.include-docker }}" = "true" ]; then
+          ARGS="$ARGS --deploy Docker"
+        fi
+        if [ "${{ inputs.include-ci }}" = "true" ]; then
+          ARGS="$ARGS --ci 'GitHub Actions'"
+        fi
+        ARGS="$ARGS --yes"
+        repokit create $ARGS
 branding:
   icon: 'rocket'
   color: 'blue'

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "start": "node bin/repokit.js",
-    "test": "echo \"✅ All checks passed\" && exit 0",
-    "lint": "echo \"✅ Lint passed\" && exit 0",
+    "test": "node tests/test.js",
+    "lint": "node tests/lint.js",
     "prepublishOnly": "chmod +x bin/repokit.js"
   },
   "keywords": [
