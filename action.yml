@@ -1,0 +1,29 @@
+name: 'RepoKit — Project Scaffolding'
+description: 'Generate a complete project from 30+ templates in seconds'
+inputs:
+  template:
+    description: 'Template to use (e.g., nextjs, fastapi, go-api)'
+    required: false
+    default: ''
+  project-name:
+    description: 'Project name'
+    required: false
+    default: 'my-project'
+  database:
+    description: 'Database choice (none, postgresql, mongodb, mysql, sqlite)'
+    required: false
+    default: 'none'
+  include-docker:
+    description: 'Include Docker configuration'
+    required: false
+    default: 'true'
+  include-ci:
+    description: 'Include CI/CD configuration'
+    required: false
+    default: 'true'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+branding:
+  icon: 'rocket'
+  color: 'blue'
