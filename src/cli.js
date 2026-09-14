@@ -165,6 +165,28 @@ async function promptForConfig(preConfig, proStatus) {
   // If template is already provided via CLI args, skip category prompt
   let templateId = preConfig.template;
 
+  // FIX: --yes / -y — fully non-interactive mode.
+  // Skip every prompt and use the provided flags + defaults.
+  if (preConfig.useDefaults) {
+    if (!templateId) templateId = 'nextjs';
+
+    const defaultsTemplate = templates.getById(templateId);
+    if (defaultsTemplate && defaultsTemplate.pro && !proStatus.pro) {
+      console.log(chalk.red('❌ Cannot proceed: Pro template selected without a valid license in non-interactive mode (--yes).'));
+      process.exit(1);
+    }
+
+    return {
+      template: templateId,
+      projectName: utils.slugify(preConfig.projectName || 'my-project'),
+      database: preConfig.database || 'none',
+      orm: preConfig.orm || 'none',
+      auth: preConfig.auth || 'none',
+      deploy: preConfig.deploy || 'None',
+      cicd: preConfig.cicd || 'None'
+    };
+  }
+
   if (!templateId) {
     // 1. Project type — only prompt if template not already chosen
     const categories = templates.getCategories();
@@ -221,8 +243,8 @@ async function promptForConfig(preConfig, proStatus) {
     console.log(chalk.gray('   Activate with: repokit activate SP-RPK-XXXX-XXXX'));
     console.log();
 
-    // If running non-interactively (stdin is not a TTY), exit with error
-    if (!process.stdin.isTTY) {
+    // If running non-interactively (stdin is not a TTY or --yes), exit with error
+    if (!process.stdin.isTTY || preConfig.useDefaults) {
       console.log(chalk.red('❌ Cannot proceed: Pro template selected without a valid license in non-interactive mode.'));
       process.exit(1);
     }

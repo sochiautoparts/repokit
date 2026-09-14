@@ -38,11 +38,13 @@ console.log('\n🔍 RepoKit Lint\n');
 const srcDir = path.join(__dirname, '..', 'src');
 
 // Security checks
+// FIX: no /g flag — .test() with a global regex is stateful (lastIndex)
+// and silently skips matches on subsequent lines
 const securityChecks = [
-  { pattern: /sk_starspay_|sk_live_|sk_test_/g, message: 'Hardcoded API key detected', severity: 'error' },
-  { pattern: /password\s*[:=]\s*['"](?:postgres|root|admin|password)['"]/gi, message: 'Hardcoded password', severity: 'error' },
-  { pattern: /nodeIntegration:\s*true/g, message: 'nodeIntegration: true is a security risk', severity: 'error' },
-  { pattern: /console\.log\(/g, message: 'console.log in production code', severity: 'warning' },
+  { pattern: /sk_starspay_|sk_live_|sk_test_/, message: 'Hardcoded API key detected', severity: 'error' },
+  { pattern: /password\s*[:=]\s*['"](?:postgres|root|admin|password)['"]/i, message: 'Hardcoded password', severity: 'error' },
+  { pattern: /nodeIntegration:\s*true/, message: 'nodeIntegration: true is a security risk', severity: 'error' },
+  { pattern: /console\.log\(/, message: 'console.log in production code', severity: 'warning' },
 ];
 
 // Check all JS files in src/

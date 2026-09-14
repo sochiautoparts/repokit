@@ -20,14 +20,25 @@ function _validate_api_url(url) {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== 'https:') return false;
-    // Allow known StarsPay domains
+    // Allow known StarsPay domains only — strict allowlist
     const allowedHosts = ['starspay-api.onrender.com', 'api.starspay.io', 'starspay.io'];
-    if (allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) return true;
-    // At minimum, require https
-    return parsed.protocol === 'https:';
+    // FIX: never fall back to "any https host" — that defeats the allowlist (SSRF)
+    return allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
   } catch {
     return false;
   }
+}
+
+/**
+ * Normalize expires_at to a value `new Date()` understands consistently.
+ * Accepts unix SECONDS (< 1e12), milliseconds (>= 1e12), ISO strings, or 0/null (lifetime).
+ */
+function _normalize_expires_at(value) {
+  if (value === null || value === undefined || value === 0) return null;
+  if (typeof value === 'number') {
+    return value < 1e12 ? value * 1000 : value;
+  }
+  return value;
 }
 
 /**
@@ -81,7 +92,7 @@ async function _verify_via_json(key) {
         return {
           pro: true,
           plan: entry.plan || 'pro',
-          expires_at: entry.expires_at || null,
+          expires_at: _normalize_expires_at(entry.expires_at),
           email: entry.email || null,
           source: 'json'
         };
@@ -129,7 +140,7 @@ async function _verify_via_api(key) {
       return {
         pro: true,
         plan: data.plan || 'pro',
-        expires_at: data.expires_at || null,
+        expires_at: _normalize_expires_at(data.expires_at),
         email: data.email || null,
         source: 'api'
       };
@@ -160,7 +171,7 @@ function getLicenseKey() {
       if (data && data.key && isValidKeyFormat(data.key)) {
         // Check if license has expired
         if (data.expires_at) {
-          const expiresAt = new Date(data.expires_at);
+          const expiresAt = new Date(_normalize_expires_at(data.expires_at));
           if (expiresAt < new Date()) {
             return null;
           }
@@ -223,7 +234,7 @@ function verifyLocalCache(key) {
       if (data && data.key === key && data.valid) {
         // Check expiration
         if (data.expires_at) {
-          const expiresAt = new Date(data.expires_at);
+          const expiresAt = new Date(_normalize_expires_at(data.expires_at));
           if (expiresAt < new Date()) {
             return { pro: false, error: 'License expired' };
           }
@@ -240,7 +251,7 @@ function verifyLocalCache(key) {
         return {
           pro: true,
           plan: data.plan || 'pro',
-          expires_at: data.expires_at || null,
+          expires_at: _normalize_expires_at(data.expires_at),
           email: data.email || null,
           cached: true
         };
@@ -262,7 +273,8 @@ function saveLicenseCache(key, data) {
       key,
       valid: data.valid !== undefined ? data.valid : data.pro,
       plan: data.plan || 'pro',
-      expires_at: data.expires_at || null,
+      // FIX: store a normalized value (ms) so every reader agrees on the format
+      expires_at: _normalize_expires_at(data.expires_at),
       email: data.email || null,
       verified_at: new Date().toISOString()
     }, { spaces: 2 });
@@ -302,7 +314,7 @@ async function activateLicense(key) {
     spinner.succeed(chalk.green('✅ License activated successfully!'));
     console.log(chalk.cyan(`   Plan: ${result.plan}`));
     if (result.expires_at) {
-      console.log(chalk.cyan(`   Expires: ${new Date(result.expires_at).toLocaleDateString()}`));
+      console.log(chalk.cyan(`   Expires: ${new Date(_normalize_expires_at(result.expires_at)).toLocaleDateString()}`));
     }
     if (result.email) {
       console.log(chalk.cyan(`   Email: ${result.email}`));
@@ -377,7 +389,7 @@ async function showStatus() {
     console.log(chalk.cyan(`   Key: ${key.substring(0, 7)}****`));
     console.log(chalk.cyan(`   Plan: ${result.plan}`));
     if (result.expires_at) {
-      const expires = new Date(result.expires_at);
+      const expires = new Date(_normalize_expires_at(result.expires_at));
       const days = Math.ceil((expires - new Date()) / (1000 * 60 * 60 * 24));
       console.log(chalk.cyan(`   Expires: ${expires.toLocaleDateString()} (${days} days)`));
     }

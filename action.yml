@@ -30,26 +30,31 @@ runs:
   steps:
     - name: Install RepoKit
       shell: bash
-      run: npm install -g repokit
+      # FIX: the "repokit" npm package is not published — install from the Action's own checkout
+      run: npm install -g "${{ github.action_path }}"
     - name: Generate Project
       shell: bash
       env:
         STARSPAY_LICENSE_KEY: ${{ inputs.license-key }}
+        # FIX: pass inputs via env to prevent shell injection
+        INPUT_TEMPLATE: ${{ inputs.template }}
+        INPUT_PROJECT_NAME: ${{ inputs.project-name }}
+        INPUT_DATABASE: ${{ inputs.database }}
+        INPUT_INCLUDE_DOCKER: ${{ inputs.include-docker }}
+        INPUT_INCLUDE_CI: ${{ inputs.include-ci }}
       run: |
-        ARGS=""
-        if [ -n "${{ inputs.template }}" ]; then
-          ARGS="$ARGS --template ${{ inputs.template }}"
+        # FIX: use a bash array to keep quoting intact (e.g. "GitHub Actions")
+        ARGS=(--name "$INPUT_PROJECT_NAME" --database "$INPUT_DATABASE" --yes)
+        if [ -n "$INPUT_TEMPLATE" ]; then
+          ARGS+=(--template "$INPUT_TEMPLATE")
         fi
-        ARGS="$ARGS --name ${{ inputs.project-name }}"
-        ARGS="$ARGS --database ${{ inputs.database }}"
-        if [ "${{ inputs.include-docker }}" = "true" ]; then
-          ARGS="$ARGS --deploy Docker"
+        if [ "$INPUT_INCLUDE_DOCKER" = "true" ]; then
+          ARGS+=(--deploy Docker)
         fi
-        if [ "${{ inputs.include-ci }}" = "true" ]; then
-          ARGS="$ARGS --ci 'GitHub Actions'"
+        if [ "$INPUT_INCLUDE_CI" = "true" ]; then
+          ARGS+=(--ci "GitHub Actions")
         fi
-        ARGS="$ARGS --yes"
-        repokit create $ARGS
+        repokit create "${ARGS[@]}"
 branding:
   icon: 'rocket'
   color: 'blue'

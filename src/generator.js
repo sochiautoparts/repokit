@@ -1176,7 +1176,8 @@ export default defineConfig({
 <p class="text-xl text-gray-500 mt-4">Built with SvelteKit + RepoKit</p>
 `);
 
-  fs.ensureDirSync(path.join(projectDir, 'src', 'app.d.ts'));
+  // FIX: ensure the parent directory (src), not the file path itself (EISDIR)
+  fs.ensureDirSync(path.join(projectDir, 'src'));
   fs.writeFileSync(path.join(projectDir, 'src', 'app.d.ts'),
     `/// <reference types="@sveltejs/kit" />
 `);
@@ -1738,6 +1739,7 @@ import (
     "os"
 
     "github.com/gin-gonic/gin"
+    "gorm.io/driver/postgres"
     "gorm.io/driver/sqlite"
     "gorm.io/gorm"
     "${data.projectName}/internal/handler"
@@ -1752,8 +1754,11 @@ func main() {
     var err error
     if dbURL != "" {
         log.Println("Connecting to PostgreSQL...")
-        // Use postgres driver for real DB
-        log.Fatal("PostgreSQL driver not imported - use sqlite for dev")
+        // FIX: use the real postgres driver (gorm.io/driver/postgres is in go.mod)
+        db, err = postgres.Open(dbURL)
+        if err != nil {
+            log.Fatal("Failed to connect to database:", err)
+        }
     } else {
         db, err = sqlite.Open("dev.db")
         if err != nil {
@@ -1956,7 +1961,8 @@ async fn create_item(item: web::Json<Item>) -> HttpResponse {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    tracing_subscriber::init();
+    // FIX: correct init path (tracing_subscriber::init does not exist)
+    tracing_subscriber::fmt::init();
 
     println!("🚀 Server starting on http://0.0.0.0:8080");
 
@@ -3064,11 +3070,13 @@ const styles = StyleSheet.create({
 
 // FIX: Complete Flutter with pubspec.yaml, lib/main.dart
 function generateFlutter(projectDir, data) {
+  // FIX: Dart package names must be snake_case (hyphens are invalid)
+  const dartName = data.projectName.replace(/-/g, '_');
   fs.ensureDirSync(path.join(projectDir, 'lib'));
   fs.ensureDirSync(path.join(projectDir, 'test'));
 
   fs.writeFileSync(path.join(projectDir, 'pubspec.yaml'),
-    `name: ${data.projectName}
+    `name: ${dartName}
 description: ${data.description}
 version: 1.0.0+1
 
@@ -3163,7 +3171,7 @@ class HomePage extends StatelessWidget {
 
   fs.writeFileSync(path.join(projectDir, 'test', 'widget_test.dart'),
     `import 'package:flutter_test/flutter_test.dart';
-import 'package:${data.projectName}/main.dart';
+import 'package:${dartName}/main.dart';
 
 void main() {
   testWidgets('Home page renders', (WidgetTester tester) async {
@@ -3191,12 +3199,15 @@ function generateVueFullstack(projectDir, data) {
   pkg.dependencies['express'] = '^4.19.0';
   pkg.dependencies['cors'] = '^2.8.5';
   pkg.devDependencies['prisma'] = '^5.14.0';
-  pkg.scripts.server = 'node server/index.js';
+  // FIX: concurrently is required by the dev:all script
+  pkg.devDependencies['concurrently'] = '^8.2.0';
+  // FIX: package.json has "type": "module" — the CommonJS server must be .cjs
+  pkg.scripts.server = 'node server/index.cjs';
   pkg.scripts['dev:all'] = 'concurrently "npm run dev" "npm run server"';
   fs.writeJsonSync(path.join(projectDir, 'package.json'), pkg, { spaces: 2 });
 
   fs.ensureDirSync(path.join(projectDir, 'server'));
-  fs.writeFileSync(path.join(projectDir, 'server', 'index.js'),
+  fs.writeFileSync(path.join(projectDir, 'server', 'index.cjs'),
     `const express = require('express');
 const cors = require('cors');
 
@@ -3223,7 +3234,7 @@ function generateAstro(projectDir, data) {
     version: '0.1.0',
     type: 'module',
     scripts: { dev: 'astro dev', build: 'astro build', preview: 'astro preview' },
-    dependencies: { astro: '^4.6.0', '@astrojs/react': '^3.3.0', react: '^18.3.0', 'react-dom': '^18.3.0' },
+    dependencies: { astro: '^4.6.0', '@astrojs/react': '^3.3.0', react: '^18.3.0', 'react-dom': '^18.3.0', '@astrojs/tailwind': '^5.1.0' },
     devDependencies: { '@types/react': '^18.3.0', tailwindcss: '^3.4.0' }
   }, { spaces: 2 });
 
@@ -3409,7 +3420,7 @@ function generateNestjs(projectDir, data) {
       sourceMap: true,
       outDir: './dist',
       baseUrl: './',
-      incrementald: true,
+      incremental: true,
       skipLibCheck: true,
       strictNullChecks: false,
       noImplicitAny: false,
